@@ -6,14 +6,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 DB_ENGINE = create_engine('sqlite:///flats_data.db', echo=True)
-
-DB_BASECLASS = declarative_base()
-
+DB_BASECLASS = declarative_base(bind=DB_ENGINE)
 DB_SESSIONCLASS = sessionmaker(bind=DB_ENGINE)
 
 DB = DB_SESSIONCLASS()
-
-
 
 
 class Flat(DB_BASECLASS):
@@ -39,7 +35,24 @@ class Flat(DB_BASECLASS):
 
 
 
+def scrape_homegate():
+    """ gets entries from homegate.ch """
+
+    f = Flat()
+    f.category = "test"
+    f.level = 123
+    f.address = "somewhere"
+    f.source_url = "made up"
+    return [f]
 
 
 
+
+
+# INIT: create tables
+# DB_BASECLASS.metadata.create_all(DB_ENGINE)
+
+fs = scrape_homegate()
+DB.add_all(fs)
+DB.commit()
 
