@@ -1,25 +1,30 @@
 #!/bin/python
+""" This script scrapes various websites for flats and other things to rent """
 
-import sqlalchemy
-from sqlalchemy import *
-from sqlalchemy.ext.declarative import *
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-db = create_engine('sqlite:///flats_data.db')
+DB_ENGINE = create_engine('sqlite:///flats_data.db', echo=True)
 
-SQLBase = declarative_base()
+DB_BASECLASS = declarative_base()
+
+DB_SESSIONCLASS = sessionmaker(bind=DB_ENGINE)
+
+DB = DB_SESSIONCLASS()
 
 
 
 
+class Flat(DB_BASECLASS):
+    """ This class represents specific properties to rent """
 
-
-class Flat(SQLBase):
     __tablename__ = 'flats'
 
-    id = Column(Integer, primary_key = True)
+    db_id = Column(Integer, primary_key=True)
 
     room_count = Column(Integer)
-    category = Column(String)   # 'room', 'WG', 'flat', 'house'
+    category = Column(String)     # 'room', 'WG', 'flat', 'house'
     level = Column(Integer)       # 0: EG, 1: 1.OG, ...
 
     address = Column(String)
@@ -27,6 +32,10 @@ class Flat(SQLBase):
     lon = Column(Integer)
 
     source_url = Column(Integer)
+
+    def foofoo(self):
+        """ asdfasdf """
+        self.address = "asdfasdf"
 
 
 
