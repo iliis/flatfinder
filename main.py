@@ -2,12 +2,14 @@
 """ This script scrapes various websites for flats and other things to rent """
 
 import re
+import os
+import md5
 
 from sqlalchemy import Column, Integer, String, Float, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DB_ENGINE = create_engine('sqlite:///flats_data.db', echo=True)
+DB_ENGINE = create_engine('sqlite:///flats_data.db', echo=True, encoding='utf-8', convert_unicode=True)
 DB_BASECLASS = declarative_base(bind=DB_ENGINE)
 DB_SESSIONCLASS = sessionmaker(bind=DB_ENGINE)
 
@@ -54,15 +56,37 @@ class Flat(DB_BASECLASS):
         """ asdfasdf """
         self.address = "asdfasdf"
 
+def url_to_filename(url):
+    """ creates a human readable hash from url which is also a valid filename """
+    domain = re.search('^(http://)?([A-Za-z\.-_/]+)/.*', url).group(2)
+    domain = domain.replace('.', '_')
+    return domain + "__" + str(md5.new(url).hexdigest()) + ".html"
+
+def download_site(url, filename):
+    data = urlopener.open(url).read()
+    with open(filename, "wb") as localfile:
+        localfile.write(data)
+
+def getfile_cached(url):
+    """ returns local copy of 'url' and downloads it if its not chached yet. """
+    path = url_to_filename('html_cache/'+url_to_filename(url))
+    if not os.path.exists(path):
+        print url, "not found in cache, downloading ..."
+        download_site(url, path)
+    else:
+        print "found cached copy of", url
+    return open(path)
 
 def homegate_parse_link(href):
-    return re.search('^(http://.+);jsessionid.*', href).group(1)
+    return re.search('^(http://.+)(;jsessionid.*)?', href).group(1)
 
 def homegate_parse_floor_level(text):
     if not text:
         return None
     if "EG" in text:
         return 0
+    if "UG" in text:
+        return -1
     else:
         return re.search('^(\d+)\..*', text).group(1)
 
@@ -79,7 +103,7 @@ def homegate_parse_br_array(data):
                 arr.append(None)
                 last_was_valid = True
         else:
-            arr.append(d.encode('utf-8').strip())
+            arr.append(unicode(d).strip())
             last_was_valid = True
     return arr
 
@@ -87,17 +111,13 @@ def homegate_parse_br_array(data):
 
 def scrape_homegate_table(htmldocument):
     """ gets entries from homegate.ch """
-
-    all_entries = 'http://www.homegate.ch/mieten/wohnung-und-haus/bezirk-zuerich/trefferliste?mn=ctn_zh&oa=false&ao=&am=&an=&a=default&tab=list&incsubs=default&l=default'
-
-    #page = urlopener.open(all_entries)
-    #soup = BeautifulSoup(page)
     soup = BeautifulSoup(htmldocument)
 
     itemtable = soup.find_all(id='objectList')
 
     if (len(itemtable) != 1):
-        raise "Invalid number of item tables: " + str(len(itemtable))
+        # homegate has some anti-scraping measures, download via VPN ;)
+        raise Exception("Invalid number of item tables: " + str(len(itemtable)))
 
     itemtable = itemtable[0].find_all('tbody')[0]
 
@@ -143,25 +163,26 @@ def scrape_homegate_table(htmldocument):
         print f.rent_monthly_brutto
         print '------------------------------'
 
-        #print f.level
-        #print item.find_all('td')[0].find_all('a')[0]
+        all_flats.append(f)
 
-    #f = Flat()
-    #f.category = "test"
-    #f.level = 123
-    #f.address = "somewhere"
-    #f.source_url = "made up"
-    #return [f]
+    return all_flats
 
 
 
+if not os.path.exists('flats_data.db'):
+    # INIT: create tables
+    print "creating empty database ..."
+    DB_BASECLASS.metadata.create_all(DB_ENGINE)
+
+if not os.path.exists('html_cache'):
+    os.mkdir('html_cache')
 
 
-# todo: autocreate
-# INIT: create tables
-# DB_BASECLASS.metadata.create_all(DB_ENGINE)
+all_entries = 'http://www.homegate.ch/mieten/wohnung-und-haus/bezirk-zuerich/trefferliste?mn=ctn_zh&oa=false&ao=&am=&an=&a=default&tab=list&incsubs=default&l=default'
 
-fs = scrape_homegate_table(open('basiclist.html'))
-#DB.add_all(fs)
-#DB.commit()
+
+fs = scrape_homegate_table(getfile_cached(all_entries))
+
+DB.add_all(fs)
+DB.commit()
 
