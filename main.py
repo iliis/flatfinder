@@ -107,19 +107,17 @@ def homegate_parse_br_array(data):
             last_was_valid = True
     return arr
 
+def homegate_get_next_page_link(soup):
+    """ parses link to next page of search result table. returns None if not
+    found (probably because this was the last page) """
+
+    return soup.find('table', id='pictureNavigation').find('a', class_='forward iconLink')['href']
 
 
-def scrape_homegate_table(htmldocument):
+def scrape_homegate_table(soup):
     """ gets entries from homegate.ch """
-    soup = BeautifulSoup(htmldocument)
 
-    itemtable = soup.find_all(id='objectList')
-
-    if (len(itemtable) != 1):
-        # homegate has some anti-scraping measures, download via VPN ;)
-        raise Exception("Invalid number of item tables: " + str(len(itemtable)))
-
-    itemtable = itemtable[0].find_all('tbody')[0]
+    itemtable = soup.find('table', id='objectList').find('tbody')
 
     all_flats = []
 
@@ -167,6 +165,26 @@ def scrape_homegate_table(htmldocument):
 
     return all_flats
 
+def scrape_homegate():
+    url = 'http://www.homegate.ch/mieten/wohnung-und-haus/bezirk-zuerich/trefferliste?mn=ctn_zh&oa=false&ao=&am=&an=&a=default&tab=list&incsubs=default&l=default'
+
+    all_flats = []
+
+    while True:
+
+        htmldocument = getfile_cached(url)
+        soup = BeautifulSoup(htmldocument)
+
+        all_flats.append(scrape_homegate_table(soup))
+
+        url = homegate_get_next_page_link(soup)
+
+        if not url:
+            break;
+
+    return all_flats
+
+
 
 
 if not os.path.exists('flats_data.db'):
@@ -181,7 +199,7 @@ if not os.path.exists('html_cache'):
 all_entries = 'http://www.homegate.ch/mieten/wohnung-und-haus/bezirk-zuerich/trefferliste?mn=ctn_zh&oa=false&ao=&am=&an=&a=default&tab=list&incsubs=default&l=default'
 
 
-fs = scrape_homegate_table(getfile_cached(all_entries))
+fs = scrape_homegate()
 
 DB.add_all(fs)
 DB.commit()
