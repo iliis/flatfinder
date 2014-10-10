@@ -4,6 +4,9 @@
 import re
 import os
 import md5
+import random # for intrand
+import time # for sleep()
+import sys # for stdout.flush()
 
 from sqlalchemy import Column, Integer, String, Float, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -71,8 +74,15 @@ def getfile_cached(url):
     """ returns local copy of 'url' and downloads it if its not chached yet. """
     path = url_to_filename('html_cache/'+url_to_filename(url))
     if not os.path.exists(path):
-        print url, "not found in cache, downloading ..."
+        s = random.randint(0, 5)
+        print url, "not found in cache."
+        print "waiting", s, "seconds ...",
+        sys.stdout.flush()
+        time.sleep(s)
+        print "OK"
+        print "downloading ...",
         download_site(url, path)
+        print "OK"
     else:
         print "found cached copy of", url
     return open(path)
