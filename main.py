@@ -12,7 +12,7 @@ from sqlalchemy import Column, Integer, String, Float, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DB_ENGINE = create_engine('sqlite:///flats_data.db', echo=True, encoding='utf-8', convert_unicode=True)
+DB_ENGINE = create_engine('sqlite:///flats_data.db', echo=False, encoding='utf-8', convert_unicode=True)
 DB_BASECLASS = declarative_base(bind=DB_ENGINE)
 DB_SESSIONCLASS = sessionmaker(bind=DB_ENGINE)
 
@@ -21,11 +21,14 @@ DB = DB_SESSIONCLASS()
 
 from bs4 import BeautifulSoup
 from bs4 import element
-import urllib2
+import dryscrape
 
+"""
+import urllib2
 urlopener = urllib2.build_opener()
 #urlopener.addheaders = [('User-agent', 'Mozilla/5.0')]
 urlopener.addheaders = [('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.6) Gecko/20070725 Firefox/2.0.0.6')]
+"""
 
 
 class Flat(DB_BASECLASS):
@@ -62,30 +65,45 @@ class Flat(DB_BASECLASS):
 def url_to_filename(url):
     """ creates a human readable hash from url which is also a valid filename """
     domain = re.search('^(http://)?([A-Za-z\.-_/]+)/.*', url).group(2)
-    domain = domain.replace('.', '_')
+    domain = domain.replace('.', '_').replace('/', '_')
     return domain + "__" + str(md5.new(url).hexdigest()) + ".html"
 
-def download_site(url, filename):
-    data = urlopener.open(url).read()
+def download_site(url, filename, dryscrape_session):
+    dryscrape_session.visit(url)
     with open(filename, "wb") as localfile:
-        localfile.write(data)
+        localfile.write(dryscrape_session.body())
 
-def getfile_cached(url):
+    #data = urlopener.open(url).read()
+    #with open(filename, "wb") as localfile:
+        #localfile.write(data)
+
+def getfile_cached(url, dryscrape_session):
     """ returns local copy of 'url' and downloads it if its not chached yet. """
-    path = url_to_filename('html_cache/'+url_to_filename(url))
+    path = 'html_cache/'+url_to_filename(url)
     if not os.path.exists(path):
-        s = random.randint(0, 5)
+        s = random.randint(1, 8)
         print url, "not found in cache."
         print "waiting", s, "seconds ...",
         sys.stdout.flush()
         time.sleep(s)
         print "OK"
-        print "downloading ...",
-        download_site(url, path)
+        print "downloading to", path, "...",
+        download_site(url, path, dryscrape_session)
         print "OK"
     else:
-        print "found cached copy of", url
+        print "found cached copy of", url, "at", path
     return open(path)
+
+def destroy_cached_file(url):
+    if not url:
+        print "cannot delete url, it's invalid:", url
+        return
+    path = 'html_cache/'+url_to_filename(url)
+    if os.path.exists(path):
+        print "deleting", path
+        os.remove(path)
+    else:
+        print "cannot delete cache of", url, "==", path, ": it's not cached"
 
 def homegate_parse_link(href):
     return re.search('^(http://.+)(;jsessionid.*)?', href).group(1)
@@ -121,7 +139,12 @@ def homegate_get_next_page_link(soup):
     """ parses link to next page of search result table. returns None if not
     found (probably because this was the last page) """
 
-    return soup.find('table', id='pictureNavigation').find('a', class_='forward iconLink')['href']
+    t = soup.find('table', id='pictureNavigation')
+    if t:
+        t = t.find('a', class_='forward iconLink')
+        if t:
+            return t['href']
+    return None
 
 
 def scrape_homegate_table(soup):
@@ -159,7 +182,9 @@ def scrape_homegate_table(soup):
 
         price = tds[5].find_all('a')[1].text.encode('utf-8').strip()
         if (price):
-            f.rent_monthly_brutto = int(re.search('^(\d+)\.--.*', price.replace('\'','')).group(1))
+            p = re.search('^(\d+)\.--.*', price.replace('\'',''))
+            if p:
+                f.rent_monthly_brutto = int(p.group(1))
 
         print f.address_street
         print f.address_plz
@@ -175,22 +200,43 @@ def scrape_homegate_table(soup):
 
     return all_flats
 
+
 def scrape_homegate():
+    sess = dryscrape.Session(base_url = 'http://www.homegate.ch/')
+    sess.set_attribute('auto_load_images', False)
     url = 'http://www.homegate.ch/mieten/wohnung-und-haus/bezirk-zuerich/trefferliste?mn=ctn_zh&oa=false&ao=&am=&an=&a=default&tab=list&incsubs=default&l=default'
 
     all_flats = []
 
     while True:
 
-        htmldocument = getfile_cached(url)
-        soup = BeautifulSoup(htmldocument)
+        soup = None
 
-        all_flats.append(scrape_homegate_table(soup))
+        max_tries = 3
+        while max_tries > 0:
+            try:
+                max_tries = max_tries - 1
+                print "parsing", url
+                htmldocument = getfile_cached(url, sess)
+                soup = BeautifulSoup(htmldocument)
 
-        url = homegate_get_next_page_link(soup)
+                fs = scrape_homegate_table(soup)
+            except:
+                if max_tries > 0:
+                    print "failed to parse", url, "trying again."
+                    destroy_cached_file(url)
+                else:
+                    print "failed to parse", url, "too many times. giving up."
+                    return
 
-        if not url:
-            break;
+        all_flats.extend(fs)
+
+        if soup:
+            url = homegate_get_next_page_link(soup)
+            if url:
+                continue
+
+        break
 
     return all_flats
 
@@ -210,6 +256,8 @@ all_entries = 'http://www.homegate.ch/mieten/wohnung-und-haus/bezirk-zuerich/tre
 
 
 fs = scrape_homegate()
+
+print "done. found", len(fs), "entries"
 
 DB.add_all(fs)
 DB.commit()
