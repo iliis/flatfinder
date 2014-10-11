@@ -5,16 +5,6 @@ import time
 def homegate_parse_link(href):
     return re.search('^(http://.+)(;jsessionid.*)?', href).group(1)
 
-def homegate_parse_floor_level(text):
-    if not text:
-        return None
-    if "EG" in text:
-        return 0
-    if "UG" in text:
-        return -1
-    else:
-        return re.search('^(\d+)\..*', text).group(1)
-
 def homegate_get_next_page_link(soup):
     """ parses link to next page of search result table. returns None if not
     found (probably because this was the last page) """
@@ -55,7 +45,7 @@ def scrape_homegate_table(soup):
             f.room_count     = parse_room_count(details[0])
         if (details[2]):
             f.room_area      = parse_area_count(details[2])
-        f.level              = homegate_parse_floor_level(details[1])
+        f.level              = parse_floor_level(details[1])
 
         details = parse_br_list(tds[5].a.contents)
 

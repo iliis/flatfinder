@@ -4,6 +4,7 @@ import md5
 import random # for intrand
 import time # for sleep()
 import sys # for stdout.flush()
+import datetime
 
 
 from bs4 import BeautifulSoup
@@ -78,14 +79,14 @@ def parse_br_list(data):
     return arr
 
 def parse_room_count(string):
-    r = re.search('(\d+\.\d).*', string)
+    r = re.search('[^\d]*(\d+\.\d).*', string)
     if r:
         return float(r.group(1))
     else:
         return None
 
 def parse_area_count(string):
-    r = re.search('(\d+).*', string)
+    r = re.search('[^\d]*(\d+).*', string)
     if r:
         return int(r.group(1))
     else:
@@ -95,8 +96,18 @@ def parse_price(string):
     if not string:
         return None
     string = string.replace('\'', '')
-    r = re.search('(\d+)\.--.*', string)
+    r = re.search('[^\d]*(\d+).*', string)
     if r:
         return int(r.group(1))
     else:
         return None
+
+def parse_floor_level(text):
+    if not text:
+        return None
+    if "EG" in text:
+        return 0
+    if "UG" in text:
+        return -1
+    else:
+        return re.search('^(\d+)\..*', text).group(1)

@@ -1,3 +1,5 @@
+#encoding: utf-8
+
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -46,12 +48,11 @@ class Flat(DB_BASECLASS):
 
     def show(self):
         print '------------------------------'
-        print self.address_street
-        print self.address_plz
-        print self.address_city
-        print self.room_count
-        print self.level
-        print self.room_area
-        print self.category
-        print self.rent_monthly_brutto
+        print "Strasse:  ", self.address_street
+        print "PLZ ORT:  ", self.address_plz, self.address_city
+        print "Zimmer:   ", self.room_count
+        print "Fläche:   ", self.room_area
+        print "Etage:    ", self.level
+        print "Kategorie:", self.category
+        print "Miete:    ", self.rent_monthly_brutto
         print '------------------------------'
