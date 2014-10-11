@@ -56,3 +56,10 @@ class Flat(DB_BASECLASS):
         print "Kategorie:", self.category
         print "Miete:    ", self.rent_monthly_brutto
         print '------------------------------'
+
+    def similarity(self, other):
+        s = 0
+
+        # TODO (use bayes or something here)
+
+        return s
