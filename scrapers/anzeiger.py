@@ -41,4 +41,8 @@ def scrape_anzeiger_table(soup):
     return flats
 
 def anzeiger_get_next_page_link(soup):
-    return 'http://www.anzeiger.ch' + soup.find('div', class_='resultPaging').find('a', class_='forward')['href']
+    a = soup.find('div', class_='resultPaging').find('a', class_='forward')
+    if a:
+        return 'http://www.anzeiger.ch' + a['href']
+    else:
+        return None

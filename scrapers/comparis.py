@@ -99,4 +99,8 @@ def scrape_comparis_table(soup):
     return flats
 
 def comparis_get_next_page_link(soup):
-    return 'TODO'
+    a = soup.find('div', class_='paging-container').find('a', class_='paging-arrow-forward')
+    if a:
+        return 'https://www.comparis.ch' + a['href']
+    else:
+        return None
