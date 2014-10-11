@@ -59,3 +59,44 @@ def destroy_cached_file(url):
         os.remove(path)
     else:
         print "cannot delete cache of", url, "==", path, ": it's not cached"
+
+def parse_br_list(data):
+    arr = []
+    last_was_valid = False
+    for d in data:
+        if type(d) is element.Tag: # <br/>
+            if (last_was_valid):
+                # this <br/> is just a break between normal elements
+                last_was_valid = False
+            else:
+                # this <br/> has no preceding string, i.e. the string was empty
+                arr.append(None)
+                last_was_valid = True
+        else:
+            arr.append(unicode(d).strip())
+            last_was_valid = True
+    return arr
+
+def parse_room_count(string):
+    r = re.search('(\d+\.\d).*', string)
+    if r:
+        return float(r.group(1))
+    else:
+        return None
+
+def parse_area_count(string):
+    r = re.search('(\d+).*', string)
+    if r:
+        return int(r.group(1))
+    else:
+        return None
+
+def parse_price(string):
+    if not string:
+        return None
+    string = string.replace('\'', '')
+    r = re.search('(\d+)\.--.*', string)
+    if r:
+        return int(r.group(1))
+    else:
+        return None

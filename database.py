@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, create_engine
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -27,14 +27,31 @@ class Flat(DB_BASECLASS):
     lat = Column(Integer)
     lon = Column(Integer)
 
-    source_url = Column(Integer)
-
     short_desc = Column(String)
     long_desc  = Column(String)
 
     rent_monthly_brutto = Column(Integer)
     rent_monthly_netto  = Column(Integer)
 
-    def foofoo(self):
-        """ asdfasdf """
-        self.address = "asdfasdf"
+    rent_begin_date = Column(Date)
+    rent_end_date = Column(Date)
+
+    announce_time = Column(DateTime) # when was this entry put online
+
+    # meta-data
+    first_seen = Column(DateTime) # when did we download this entry for the first time?
+    last_seen  = Column(DateTime) # when's the last time we downloaded this?
+    source_url = Column(Integer)
+
+
+    def show(self):
+        print '------------------------------'
+        print self.address_street
+        print self.address_plz
+        print self.address_city
+        print self.room_count
+        print self.level
+        print self.room_area
+        print self.category
+        print self.rent_monthly_brutto
+        print '------------------------------'

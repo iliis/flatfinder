@@ -15,23 +15,6 @@ def homegate_parse_floor_level(text):
     else:
         return re.search('^(\d+)\..*', text).group(1)
 
-def homegate_parse_br_array(data):
-    arr = []
-    last_was_valid = False
-    for d in data:
-        if type(d) is element.Tag: # <br/>
-            if (last_was_valid):
-                # this <br/> is just a break between normal elements
-                last_was_valid = False
-            else:
-                # this <br/> has no preceding string, i.e. the string was empty
-                arr.append(None)
-                last_was_valid = True
-        else:
-            arr.append(unicode(d).strip())
-            last_was_valid = True
-    return arr
-
 def homegate_get_next_page_link(soup):
     """ parses link to next page of search result table. returns None if not
     found (probably because this was the last page) """
@@ -60,40 +43,28 @@ def scrape_homegate_table(soup):
         f.source_url = homegate_parse_link(tds[0].a['href'])
         f.short_desc = tds[2].a.string.strip()
 
-        addr = homegate_parse_br_array(tds[3].a.contents)
+        addr = parse_br_list(tds[3].a.contents)
 
         f.address_street = addr[0]
         f.address_plz    = int(addr[1])
         f.address_city   = addr[2]
 
-        details = homegate_parse_br_array(tds[4].a.contents)
+        details = parse_br_list(tds[4].a.contents)
 
         if (details[0]):
-            f.room_count     = float(re.search('^(\d+\.\d).*', details[0]).group(1))
+            f.room_count     = parse_room_count(details[0])
         if (details[2]):
-            f.room_area      = int(re.search('^(\d+).*', details[2]).group(1))
+            f.room_area      = parse_area_count(details[2])
         f.level              = homegate_parse_floor_level(details[1])
 
-        details = homegate_parse_br_array(tds[5].a.contents)
+        details = parse_br_list(tds[5].a.contents)
 
         if (details[0]):
             f.category = details[0]
 
         price = tds[5].find_all('a')[1].text.encode('utf-8').strip()
         if (price):
-            p = re.search('^(\d+)\.--.*', price.replace('\'',''))
-            if p:
-                f.rent_monthly_brutto = int(p.group(1))
-
-        print f.address_street
-        print f.address_plz
-        print f.address_city
-        print f.room_count
-        print f.level
-        print f.room_area
-        print f.category
-        print f.rent_monthly_brutto
-        print '------------------------------'
+            f.rent_monthly_brutto = parse_price(price)
 
         all_flats.append(f)
 
