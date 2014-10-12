@@ -17,9 +17,11 @@ def parse_address_line(string):
         street   = lines[0].strip()
         plz_city = lines[1].strip()
     else:
-        raise Exception("Invalid address line: more than two or no lines in '" + string + "'.")
+        #raise Exception("Invalid address line: more than two or no lines in '" + string + "'.")
+        print "Invalid address line: more than two or no lines in '" + string + "'."
+        plz_city = lines[len(lines)-1]
 
-    addr = re.search('(\d+) (.*)', plz_city)
+    addr = re.search('(\\d+) (.*)', plz_city)
     if addr:
         return [street, int(addr.group(1)), addr.group(2).strip()]
     else:
@@ -61,46 +63,52 @@ def parse_creation_date(string):
     else:
         return None
 
-def scrape_comparis_table(soup):
-    flats = []
 
-    for row in soup.find_all('div', class_='result-item'):
-        f = Flat()
+class ScraperComparis(FlatScraper):
 
-        f.source_url = 'https://www.comparis.ch' + row.find('a', class_='clickable-area')['href']
+    def scrape_page(self, soup):
+        flats = []
 
-        desc = row.find('div', class_='description-column')
+        for row in soup.find_all('div', class_='result-item'):
+            f = Flat()
 
-        f.short_desc = desc.h5.text
+            f.source_url = 'https://www.comparis.ch' + row.find('a', class_='clickable-area')['href']
 
-        addr = parse_address_line(desc.find('div', class_='single-line').text)
-        f.address_street = addr[0]
-        f.address_plz    = addr[1]
-        f.address_city   = addr[2]
+            desc = row.find('div', class_='description-column')
 
-        details = desc.find('div', class_='details-section')
+            f.short_desc = desc.h5.text
 
-        f.rent_monthly_brutto = parse_price(details.find('div', class_='price-element').text.strip())
+            addr = parse_address_line(desc.find('div', class_='single-line').text)
+            f.address_street = addr[0]
+            f.address_plz    = addr[1]
+            f.address_city   = addr[2]
 
-        details = details.find('div', class_='left').find_all('div', class_='single-line')
-        f.category = details[0].text.strip()
-        f.announce_time = parse_creation_date(details[2].text.strip())
+            details = desc.find('div', class_='details-section')
 
-        details = parse_size_details_line(details[1].text.strip())
-        # [ room_count, room_area, floor_level ]
-        f.room_count = details[0]
-        f.room_area  = details[1]
-        f.level      = details[2]
+            f.rent_monthly_brutto = parse_price(details.find('div', class_='price-element').text.strip())
 
-        f.show()
+            details = details.find('div', class_='left').find_all('div', class_='single-line')
+            f.category = details[0].text.strip()
+            f.announce_time = parse_creation_date(details[2].text.strip())
 
-        flats.append(f)
+            details = parse_size_details_line(details[1].text.strip())
+            # [ room_count, room_area, floor_level ]
+            f.room_count = details[0]
+            f.room_area  = details[1]
+            f.level      = details[2]
 
-    return flats
+            f.show()
 
-def comparis_get_next_page_link(soup):
-    a = soup.find('div', class_='paging-container').find('a', class_='paging-arrow-forward')
-    if a:
-        return 'https://www.comparis.ch' + a['href']
-    else:
-        return None
+            flats.append(f)
+
+        return flats
+
+    def get_start_link(self):
+        return 'https://www.comparis.ch/immobilien/marktplatz/zuerich/mieten'
+
+    def get_next_page_link(self, soup):
+        a = soup.find('div', class_='paging-container').find('a', class_='paging-arrow-forward')
+        if a:
+            return 'https://www.comparis.ch' + a['href']
+        else:
+            return None

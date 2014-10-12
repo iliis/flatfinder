@@ -5,7 +5,11 @@ import random # for intrand
 import time # for sleep()
 import sys # for stdout.flush()
 import datetime
+import traceback
+from abc import ABCMeta, abstractmethod
+from colorama import init, Fore, Back, Style
 
+init()
 
 from bs4 import BeautifulSoup
 from bs4 import element
@@ -20,7 +24,7 @@ urlopener.addheaders = [('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1;
 
 def url_to_filename(url):
     """ creates a human readable hash from url which is also a valid filename """
-    domain = re.search('^(http://)?([A-Za-z\.-_/]+)/.*', url).group(2)
+    domain = re.search('^(http://)?([A-Za-z\\.-_/]+)/.*', url).group(2)
     domain = domain.replace('.', '_').replace('/', '_')
     return domain + "__" + str(md5.new(url).hexdigest()) + ".html"
 
@@ -79,14 +83,14 @@ def parse_br_list(data):
     return arr
 
 def parse_room_count(string):
-    r = re.search('[^\d]*(\d+\.\d).*', string)
+    r = re.search('[^\\d]*(\\d+\\.\\d).*', string)
     if r:
         return float(r.group(1))
     else:
         return None
 
 def parse_area_count(string):
-    r = re.search('[^\d]*(\d+).*', string)
+    r = re.search('[^\\d]*(\\d+).*', string)
     if r:
         return int(r.group(1))
     else:
@@ -96,7 +100,7 @@ def parse_price(string):
     if not string:
         return None
     string = string.replace('\'', '')
-    r = re.search('[^\d]*(\d+).*', string)
+    r = re.search('[^\\d]*(\d+).*', string)
     if r:
         return int(r.group(1))
     else:
@@ -110,4 +114,68 @@ def parse_floor_level(text):
     if "UG" in text:
         return -1
     else:
-        return re.search('^(\d+)\..*', text).group(1)
+        return re.search('^(\\d+)\..*', text).group(1)
+
+class FlatScraper:
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_start_link(self):
+        pass
+
+    @abstractmethod
+    def get_next_page_link(self, soup):
+        pass
+
+    @abstractmethod
+    def scrape_page(self, soup):
+        pass
+
+    def scrape_all(self):
+        sess = dryscrape.Session()
+        sess.set_attribute('auto_load_images', False)
+        url = self.get_start_link()
+
+        all_flats = []
+
+        while True:
+
+            soup = None
+
+            max_tries = 4
+            while max_tries > 0:
+                try:
+                    max_tries = max_tries - 1
+                    print "parsing", url
+                    htmldocument = getfile_cached(url, sess)
+                    soup = BeautifulSoup(htmldocument)
+
+                    fs = self.scrape_page(soup)
+                except Exception as error:
+
+                    print Fore.RED
+                    print unicode(error)
+                    print Fore.YELLOW
+                    traceback.print_exc()
+                    print Fore.RESET
+
+                    if max_tries > 0:
+                        print "failed to parse", url, "trying again."
+                        s = 10*(5-max_tries)
+                        print "waiting", s, "seconds ..."
+                        time.sleep(s)
+                        destroy_cached_file(url)
+                    else:
+                        print "failed to parse", url, "too many times. giving up."
+                        return
+
+            all_flats.extend(fs)
+
+            if soup:
+                url = self.get_next_page_link(soup)
+                if url:
+                    continue
+
+            break
+
+        return all_flats

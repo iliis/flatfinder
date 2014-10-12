@@ -3,7 +3,7 @@
 
 from scrapers.homegate import scrape_homegate
 from scrapers.anzeiger import scrape_anzeiger_table
-from scrapers.comparis import scrape_comparis_table
+from scrapers.comparis import ScraperComparis
 from database import *
 import os
 
@@ -18,9 +18,13 @@ if not os.path.exists('html_cache'):
 
 #fs = scrape_homegate()
 
-from bs4 import BeautifulSoup
+#from bs4 import BeautifulSoup
 #fs = scrape_anzeiger_table(BeautifulSoup(open('examples/anzeiger.html')))
-fs = scrape_comparis_table(BeautifulSoup(open('examples/comparis.html')))
+#fs = scrape_comparis_table(BeautifulSoup(open('examples/comparis.html')))
+
+compscraper = ScraperComparis()
+
+fs = compscraper.scrape_all()
 
 print "done. found", len(fs), "entries"
 
