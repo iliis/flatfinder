@@ -16,6 +16,31 @@ if not os.path.exists('html_cache'):
     os.mkdir('html_cache')
 
 
+all_scrapers = [ScraperAnzeiger(), ScraperComparis(), ScraperHomegate()]
+
+
+
+
+
+def scrape_everything():
+    total = 0
+
+    for scraper in all_scrapers:
+        fs = scraper.scrape_all()
+        total += len(fs)
+
+        DB.add_all(fs)
+        DB.commit()
+
+    print "done. found", len(fs), "entries"
+
+
+
+
+scrape_everything()
+
+
+
 #fs = scrape_homegate()
 
 #from bs4 import BeautifulSoup
@@ -25,8 +50,8 @@ if not os.path.exists('html_cache'):
 #compscraper = ScraperComparis()
 #fs = compscraper.scrape_all()
 
-scraper = ScraperComparis()
-fs = scraper.scrape_all()
+#scraper = ScraperComparis()
+#fs = scraper.scrape_all()
 
 #import dryscrape
 #sess = dryscrape.Session()
@@ -36,7 +61,6 @@ fs = scraper.scrape_all()
 #sess.visit(url)
 #print sess.body()
 
-print "done. found", len(fs), "entries"
 
 #DB.add_all(fs)
 #DB.commit()
