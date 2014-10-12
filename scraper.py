@@ -83,6 +83,8 @@ def parse_br_list(data):
     return arr
 
 def parse_room_count(string):
+    if not string:
+        return None
     r = re.search('[^\\d]*(\\d+\\.\\d).*', string)
     if r:
         return float(r.group(1))
@@ -90,6 +92,8 @@ def parse_room_count(string):
         return None
 
 def parse_area_count(string):
+    if not string:
+        return None
     r = re.search('[^\\d]*(\\d+).*', string)
     if r:
         return int(r.group(1))

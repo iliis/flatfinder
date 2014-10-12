@@ -97,8 +97,6 @@ class ScraperComparis(FlatScraper):
             f.room_area  = details[1]
             f.level      = details[2]
 
-            f.show()
-
             flats.append(f)
 
         return flats
