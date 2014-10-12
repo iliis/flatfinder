@@ -7,9 +7,7 @@ import sys # for stdout.flush()
 import datetime
 import traceback
 from abc import ABCMeta, abstractmethod
-from colorama import init, Fore, Back, Style
-
-init()
+from colorama import Fore, Back, Style
 
 from bs4 import BeautifulSoup
 from bs4 import element
@@ -21,6 +19,17 @@ urlopener = urllib2.build_opener()
 #urlopener.addheaders = [('User-agent', 'Mozilla/5.0')]
 urlopener.addheaders = [('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.6) Gecko/20070725 Firefox/2.0.0.6')]
 """
+
+def sleep_progress(seconds):
+    print "sleeping", seconds, "seconds ...",
+    sys.stdout.flush()
+    while (seconds > 0):
+        print "\rsleeping" + Style.BRIGHT, seconds, Style.RESET_ALL + "seconds ...",
+        sys.stdout.flush()
+        time.sleep(1)
+        seconds = seconds - 1
+    print "\r" + Style.BRIGHT + "OK" + Style.RESET_ALL + "                            "
+    sys.stdout.flush()
 
 def url_to_filename(url):
     """ creates a human readable hash from url which is also a valid filename """
@@ -43,10 +52,7 @@ def getfile_cached(url, dryscrape_session):
     if not os.path.exists(path):
         s = random.randint(1, 8)
         print url, "not found in cache."
-        print "waiting", s, "seconds ...",
-        sys.stdout.flush()
-        time.sleep(s)
-        print "OK"
+        sleep_progress(s)
         print "downloading to", path, "...",
         download_site(url, path, dryscrape_session)
         print "OK"
@@ -146,6 +152,8 @@ class FlatScraper:
 
             soup = None
 
+            print
+
             max_tries = 4
             while max_tries > 0:
                 try:
@@ -155,6 +163,11 @@ class FlatScraper:
                     soup = BeautifulSoup(htmldocument)
 
                     fs = self.scrape_page(soup)
+                    print Fore.GREEN
+                    print "SUCCESS: found", len(fs), "entries"
+                    print Fore.RESET
+                    break # don't try again, we just succeeded ;)
+
                 except Exception as error:
 
                     print Fore.RED
@@ -166,8 +179,7 @@ class FlatScraper:
                     if max_tries > 0:
                         print "failed to parse", url, "trying again."
                         s = 10*(5-max_tries)
-                        print "waiting", s, "seconds ..."
-                        time.sleep(s)
+                        sleep_progress(s)
                         destroy_cached_file(url)
                     else:
                         print "failed to parse", url, "too many times. giving up."

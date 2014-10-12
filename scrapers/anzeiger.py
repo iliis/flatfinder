@@ -12,7 +12,7 @@ class ScraperAnzeiger(FlatScraper):
             f = Flat()
 
             cell = row.find('div', class_='cell2')
-            f.source_url = 'http://www.anzeiger.ch/mieten/' + re.search('^/mieten/(\\d+)/.*', cell.a['href']).group(1)
+            f.source_url = 'http://www.anzeiger.ch/mieten/' + re.search('^/mieten/(\\d+).*', cell.a['href']).group(1)
 
             f.short_desc = cell.a.text
             f.long_desc = unicode(cell.br.next_sibling).strip()

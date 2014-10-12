@@ -7,6 +7,11 @@ from scrapers.comparis import ScraperComparis
 from database import *
 import os
 
+from colorama import init, Fore, Back, Style
+
+init() # initialize terminal colors (some alien systems apparently need this)
+
+
 if not os.path.exists('flats_data.db'):
     # INIT: create tables
     print "creating empty database ..."
