@@ -42,8 +42,7 @@ def scrape_everything():
 
 
 
-scrape_everything()
-
+#scrape_everything()
 
 
 #fs = scrape_homegate()

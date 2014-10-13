@@ -49,9 +49,9 @@ def bayesian_update(prior, evidence_observed, evidence_given_hypothesis, evidenc
     factor = evidence_observed * evidence_given_hypothesis \
            + (1-evidence_observed) *evidence_given_not_hypothesis
 
-    print "evidence_observed:", evidence_observed
-    print "factor:", factor
-    print "marginal:", marginal
+    #print "evidence_observed:", evidence_observed
+    #print "factor:", factor
+    #print "marginal:", marginal
 
     posterior = prior * factor / marginal
 
@@ -86,12 +86,19 @@ def spike_hat(x, y, deviation):
     else:
         return abs(x-y)/float(deviation) * 0.8
 
+class SimilarityAssoc(DB_BASECLASS):
+    __tablename__ = 'flat_similarity'
+    left_id  = Column(Integer, ForeignKey('flats.id'), primary_key = True)
+    right_id = Column(Integer, ForeignKey('flats.id'), primary_key = True)
+    similarity = Column(Float)
 
-flat_similarity_table = Table('flat_similarity', DB_BASECLASS.metadata,
-    Column('left_id',  Integer, ForeignKey('flats.id'),  primary_key = True),
-    Column('right_id', Integer, ForeignKey('flats.id'), primary_key = True),
-    Column('similarity', Float)
-)
+    left  = relationship("Flat", primaryjoin = "flats.c.id == flat_similarity.c.left_id")
+    right = relationship("Flat", primaryjoin = "flats.c.id == flat_similarity.c.right_id")
+
+    def __init__(self, flat1, flat2, similarity):
+        self.left  = flat1
+        self.right = flat2
+        self.similarity = similarity
 
 class Flat(DB_BASECLASS):
     """ This class represents specific properties to rent """
@@ -99,6 +106,13 @@ class Flat(DB_BASECLASS):
     __tablename__ = 'flats'
 
     id = Column(Integer, primary_key=True)
+
+    # similarity measure to other entries
+    similar_entries = relationship("SimilarityAssoc",
+            secondary = "flat_similarity",
+            primaryjoin   = "flats.c.id == flat_similarity.c.left_id", #id == flat_similarity_table.c.left_id,
+            secondaryjoin = "flats.c.id == flat_similarity.c.right_id", #id == flat_similarity_table.c.right_id,
+            backref = "similar_entries_reversed")
 
     room_count = Column(Float)
     room_area  = Column(Integer)  # in m^2
@@ -128,24 +142,17 @@ class Flat(DB_BASECLASS):
     last_seen  = Column(DateTime) # when's the last time we downloaded this?
     source_url = Column(String)
 
-    # similarity measure to other entries
-    similar_entries = relationship("Flat",
-            secondary = flat_similarity_table,
-            primaryjoin   = id == flat_similarity_table.c.left_id,
-            secondaryjoin = id == flat_similarity_table.c.right_id,
-            backref = "similar_entries_reversed")
 
-
-    def show(self):
-        print '------------------------------'
-        print "Strasse:  ", self.address_street
-        print "PLZ ORT:  ", self.address_plz, self.address_city
-        print "Zimmer:   ", self.room_count
-        print "Fläche:   ", self.room_area
-        print "Etage:    ", self.level
-        print "Kategorie:", self.category
-        print "Miete:    ", self.rent_monthly_brutto
-        print '------------------------------'
+    def __repr__(self):
+        return '------------------------------' + '\n' \
+               "Strasse:  " + self.address_street + '\n' \
+               "PLZ ORT:  " + self.address_plz, self.address_city + '\n' \
+               "Zimmer:   " + self.room_count + '\n' \
+               "Fläche:   " + self.room_area + '\n' \
+               "Etage:    " + self.level + '\n' \
+               "Kategorie:" + self.category + '\n' \
+               "Miete:    " + self.rent_monthly_brutto + '\n' \
+               '------------------------------' + '\n'
 
     def similarity(self, other):
         """
@@ -203,3 +210,6 @@ class Flat(DB_BASECLASS):
                     0.00001) # but if they arent the same, they certainly don't have the same link!
 
         return s
+
+    def similarity_assoc(self, other):
+        return SimilarityAssoc(self, other, self.similarity(other))
