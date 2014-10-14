@@ -46,7 +46,7 @@ def parse_size_details_line(string):
                 room_count += 0.5
         elif u"m\xb2" in s:
             room_area = int(re.search('[^\d]*(\d+).*', s).group(1))
-        elif "Etage" in s or "EG" in s or "UG" in s:
+        elif "Etage" in s or "EG" in s or "UG" or "Untergeschoss" in s:
             floor_level = parse_floor_level(s)
         else:
             raise Exception("unknown details data in string '" + s + "'.")

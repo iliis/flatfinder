@@ -121,7 +121,7 @@ def parse_floor_level(text):
         return None
     if "EG" in text:
         return 0
-    if "UG" in text:
+    if "UG" or "Untergeschoss" in text:
         return -1
     else:
         return re.search('^(\\d+)\..*', text).group(1)

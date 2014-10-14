@@ -144,15 +144,16 @@ class Flat(DB_BASECLASS):
 
 
     def __repr__(self):
-        return '------------------------------' + '\n' \
-               "Strasse:  " + self.address_street + '\n' \
-               "PLZ ORT:  " + self.address_plz, self.address_city + '\n' \
-               "Zimmer:   " + self.room_count + '\n' \
-               "Fläche:   " + self.room_area + '\n' \
-               "Etage:    " + self.level + '\n' \
-               "Kategorie:" + self.category + '\n' \
-               "Miete:    " + self.rent_monthly_brutto + '\n' \
-               '------------------------------' + '\n'
+        return "------------------------------\n" + \
+               "Strasse:  " + unicode(self.address_street).encode('utf-8') + '\n' + \
+               "PLZ ORT:  " + unicode(self.address_plz).encode('utf-8') + \
+                        " " + unicode(self.address_city).encode('utf-8') + '\n' + \
+               "Zimmer:   " + unicode(self.room_count).encode('utf-8') + '\n' + \
+               "Fläche:   " + unicode(self.room_area).encode('utf-8') + '\n' + \
+               "Etage:    " + unicode(self.level).encode('utf-8') + '\n' + \
+               "Kategorie:" + unicode(self.category).encode('utf-8') + '\n' + \
+               "Miete:    " + unicode(self.rent_monthly_brutto).encode('utf-8') + '\n' + \
+               "------------------------------\n"
 
     def similarity(self, other):
         """
@@ -170,46 +171,57 @@ class Flat(DB_BASECLASS):
                             0.95, # if self == other, its quite likely they have the same price
                             0.02)  # but if not, others might still have the same price (about 1 in 50 here)
 
-        s = bayesian_update(s, spike_hat(self.room_area, other.room_area, 1), 0.99, 0.04)
-        s = bayesian_update(s, spike_hat(self.address_plz, other.address_plz, 1), 0.99, 0.02)
+        s = bayesian_update(s, spike_hat(self.room_area,   other.room_area,   1), 0.99, 0.04)
+        s = bayesian_update(s, spike_hat(self.address_plz, other.address_plz, 1), 0.99, 0.2)
 
         # use levenshtein distance for strings
         # TODO: can we encode correlation between PLZ and city?
 
+
         if self.address_city and other.address_city:
             s = bayesian_update(s,
-                    difflib.SequenceMatcher(None, self.address_city, other.address_city),
+                    difflib.SequenceMatcher(None, self.address_city, other.address_city).ratio(),
                     0.99, 0.05)
 
         if self.address_street and other.address_street:
             s = bayesian_update(s,
-                    difflib.SequenceMatcher(None, self.address_street, other.address_street),
+                    difflib.SequenceMatcher(None, self.address_street, other.address_street).ratio(),
                     0.99, 0.01)
 
-        if self.short_desc and other.short_desc:
-            s = bayesian_update(s,
-                    difflib.SequenceMatcher(None, self.short_desc, other.short_desc),
-                    0.95, 0.002)
+        if False:
+            if self.short_desc and other.short_desc:
+                s = bayesian_update(s,
+                        difflib.SequenceMatcher(None, self.short_desc, other.short_desc).ratio(),
+                        0.95, 0.002)
 
-        if self.long_desc and other.long_desc:
-            s = bayesian_update(s,
-                    difflib.SequenceMatcher(None, self.long_desc, other.long_desc),
-                    0.95, 0.002)
+            if self.long_desc and other.long_desc:
+                s = bayesian_update(s,
+                        difflib.SequenceMatcher(None, self.long_desc, other.long_desc).ratio(),
+                        0.95, 0.002)
 
-        if self.category and other.category:
-            s = bayesian_update(s,
-                    difflib.SequenceMatcher(None, self.category, other.category),
-                    0.99, 0.4) # category isn't a very good measure, mosts are "Wohnung" anyway
+            if self.category and other.category:
+                s = bayesian_update(s,
+                        difflib.SequenceMatcher(None, self.category, other.category).ratio(),
+                        0.99, 0.4) # category isn't a very good measure, mosts are "Wohnung" anyway
 
-        s = bayesian_update(s, spike_hat(self.level, other.level, 1), 0.99, 0.1)
+            s = bayesian_update(s, spike_hat(self.level, other.level, 1), 0.99, 0.1)
 
-        if self.source_url and other.source_url:
-            s = bayesian_update(s,
-                    difflib.SequenceMatcher(None, self.source_url, other.source_url),
-                    0.01, # if we have the same entry twice, they are probably from different sites
-                    0.00001) # but if they arent the same, they certainly don't have the same link!
+            if self.source_url and other.source_url:
+                s = bayesian_update(s,
+                        difflib.SequenceMatcher(None, self.source_url, other.source_url).ratio(),
+                        0.01, # if we have the same entry twice, they are probably from different sites
+                        0.00001) # but if they arent the same, they certainly don't have the same link!
 
         return s
 
     def similarity_assoc(self, other):
         return SimilarityAssoc(self, other, self.similarity(other))
+
+def calculate_similarity_for_all(threshold):
+    for flat1 in DB.query(Flat):
+        for flat2 in DB.query(Flat):
+            s = flat1.similarity(flat2)
+
+            if s >= threshold:
+                print flat1.id, ":", flat1.address_street, "is similiar to one at",
+                print flat2.id, ":", flat2.address_street, "(p =", s, ")"
