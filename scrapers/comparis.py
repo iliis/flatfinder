@@ -25,7 +25,8 @@ def parse_address_line(string):
     if addr:
         return [street, int(addr.group(1)), addr.group(2).strip()]
     else:
-        raise Exception("invalid address line: not in format 'PLZ CITY': '" + plz_city + "'.")
+        return [street, None, plz_city.strip()]
+        print "WARNING: invalid address line: not in format 'PLZ CITY': '" + plz_city + "'."
 
 def parse_size_details_line(string):
 
@@ -106,7 +107,7 @@ class ScraperComparis(FlatScraper):
 
     def get_next_page_link(self, soup):
         a = soup.find('div', class_='paging-container').find('a', class_='paging-arrow-forward')
-        if a:
+        if a and a.has_attr('href'):
             return 'https://www.comparis.ch' + a['href']
         else:
             return None

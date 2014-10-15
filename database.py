@@ -43,17 +43,34 @@ def bayesian_update(prior, evidence_observed, evidence_given_hypothesis, evidenc
     assert 0 <= evidence_given_not_hypothesis <= 1
 
 
-    marginal = ( evidence_given_hypothesis * prior \
+    factor = evidence_observed * evidence_given_hypothesis \
+           + (1-evidence_observed) * evidence_given_not_hypothesis
+
+    marginal_obs = ( evidence_given_hypothesis * prior \
         + evidence_given_not_hypothesis * (1-prior) )
 
-    factor = evidence_observed * evidence_given_hypothesis \
-           + (1-evidence_observed) *evidence_given_not_hypothesis
+    marginal_not_obs = ( (1-evidence_given_hypothesis) * prior \
+        + (1-evidence_given_not_hypothesis) * (1-prior) )
 
-    #print "evidence_observed:", evidence_observed
+    print "evidence_observed:", evidence_observed
     #print "factor:", factor
     #print "marginal:", marginal
 
-    posterior = prior * factor / marginal
+    #posterior = prior * factor / marginal
+
+
+    posterior_if_observed = evidence_given_hypothesis * prior / marginal_obs
+    posterior_if_not_observed = (1-evidence_given_hypothesis) * prior / marginal_not_obs
+
+    # compute mixture
+    posterior =    evidence_observed  * posterior_if_observed \
+              + (1-evidence_observed) * posterior_if_not_observed
+
+
+    print "posterior_if_observed:    ", posterior_if_observed
+    print "posterior_if_not_observed:", posterior_if_not_observed
+    print "mixture:                  ", posterior
+    print
 
     assert 0 <= posterior <= 1
 
@@ -156,28 +173,28 @@ class Flat(DB_BASECLASS):
                "------------------------------\n"
 
     def similarity(self, other):
-        s =     (1-spike_hat(self.rent_monthly_brutto, other.rent_monthly_brutto, 200)) ** 2
-        s = s + (1-spike_hat(self.room_area, other.room_area, 1)) ** 2
-        s = s + (1-spike_hat(self.address_plz, other.address_plz, 1)) ** 2
-        s = s + (1-spike_hat(self.level, other.level, 1)) ** 2
+        s =     (spike_hat(self.rent_monthly_brutto, other.rent_monthly_brutto, 200))
+        s = s * (spike_hat(self.room_area, other.room_area, 1))
+        s = s * (spike_hat(self.address_plz, other.address_plz, 1))
+        s = s * (spike_hat(self.level, other.level, 1))
 
         if self.address_city and other.address_city:
-            s = s + (1-difflib.SequenceMatcher(None, self.address_city, other.address_city).ratio()) ** 2
+            s = s * (difflib.SequenceMatcher(None, self.address_city, other.address_city).ratio())
 
         if self.address_street and other.address_street:
-            s = s + (1-difflib.SequenceMatcher(None, self.address_street, other.address_street).ratio()) ** 2
+            s = s * (difflib.SequenceMatcher(None, self.address_street, other.address_street).ratio())
 
         if self.short_desc and other.short_desc:
-            s = s + (1-difflib.SequenceMatcher(None, self.short_desc, other.short_desc).ratio()) ** 2
+            s = s * (difflib.SequenceMatcher(None, self.short_desc, other.short_desc).ratio())
 
         if self.long_desc and other.long_desc:
-            s = s + (1-difflib.SequenceMatcher(None, self.long_desc, other.long_desc).ratio()) ** 2
+            s = s * (difflib.SequenceMatcher(None, self.long_desc, other.long_desc).ratio())
 
         if self.category and other.category:
-            s = s + (1-difflib.SequenceMatcher(None, self.category, other.category).ratio()) ** 2
+            s = s * (difflib.SequenceMatcher(None, self.category, other.category).ratio())
 
         if self.source_url and other.source_url:
-            s = s + (1-difflib.SequenceMatcher(None, self.source_url, other.source_url).ratio()) ** 2
+            s = s * (difflib.SequenceMatcher(None, self.source_url, other.source_url).ratio())
 
         return s
 
@@ -191,13 +208,17 @@ class Flat(DB_BASECLASS):
 
         s = 0.01 # low prior probability for self == other
 
+        print "checking rent"
         s = bayesian_update(s, spike_hat(self.rent_monthly_brutto,
                                          other.rent_monthly_brutto,
                                          200),
                             0.95, # if self == other, its quite likely they have the same price
                             0.02)  # but if not, others might still have the same price (about 1 in 50 here)
 
+        print "checking room area"
         s = bayesian_update(s, spike_hat(self.room_area,   other.room_area,   1), 0.99, 0.04)
+
+        print "checking PLZ"
         s = bayesian_update(s, spike_hat(self.address_plz, other.address_plz, 1), 0.99, 0.2)
 
         # use levenshtein distance for strings
@@ -205,35 +226,50 @@ class Flat(DB_BASECLASS):
 
 
         if self.address_city and other.address_city:
+            print "checking city"
             s = bayesian_update(s,
                     difflib.SequenceMatcher(None, self.address_city, other.address_city).ratio(),
                     0.99, 0.05)
 
         if self.address_street and other.address_street:
+            print "checking street"
             s = bayesian_update(s,
                     difflib.SequenceMatcher(None, self.address_street, other.address_street).ratio(),
                     0.99, 0.01)
 
         if self.short_desc and other.short_desc:
+            print "checking short desc"
             s = bayesian_update(s,
                     difflib.SequenceMatcher(None, self.short_desc, other.short_desc).ratio(),
                     0.95, 0.002)
 
         if self.long_desc and other.long_desc:
+            print "checking long desc"
             s = bayesian_update(s,
                     difflib.SequenceMatcher(None, self.long_desc, other.long_desc).ratio(),
                     0.95, 0.002)
 
         if self.category and other.category:
+            print "checking category"
             s = bayesian_update(s,
                     difflib.SequenceMatcher(None, self.category, other.category).ratio(),
-                    0.99, 0.4) # category isn't a very good measure, mosts are "Wohnung" anyway
+                    0.99, 0.6) # category isn't a very good measure, mosts are "Wohnung" anyway
 
+        print "checking level"
         s = bayesian_update(s, spike_hat(self.level, other.level, 1), 0.99, 0.1)
 
         if self.source_url and other.source_url:
+            print "checking source URL"
+
+            # not using Levenshtein distance, as different entries from same
+            # source have very similar URLs
+            if self.source_url == other.source_url:
+                evidence = 1
+            else:
+                evidence = 0
+
             s = bayesian_update(s,
-                    difflib.SequenceMatcher(None, self.source_url, other.source_url).ratio(),
+                    evidence,
                     0.01, # if we have the same entry twice, they are probably from different sites
                     0.00001) # but if they arent the same, they certainly don't have the same link!
 
@@ -245,8 +281,11 @@ class Flat(DB_BASECLASS):
 def calculate_similarity_for_all(threshold):
     for flat1 in DB.query(Flat):
         for flat2 in DB.query(Flat):
+            #s = flat1.similarity_bayes(flat2)
             s = flat1.similarity(flat2)
 
-            if s <= threshold and flat1.id != flat2.id:
+            if s >= threshold and flat1.id != flat2.id:
                 print flat1.id, ":", flat1.address_street, "is similiar to one at",
                 print flat2.id, ":", flat2.address_street, "(p =", s, ")"
+                DB.add(SimilarityAssoc(flat1, flat2, s))
+        DB.commit()

@@ -42,8 +42,21 @@ def scrape_everything():
 
 
 
-#scrape_everything()
-calculate_similarity_for_all(2)
+scrape_everything()
+calculate_similarity_for_all(0.1)
+
+
+
+
+#f1 = DB.query(Flat).filter(Flat.id == 34).one()
+#f2 = DB.query(Flat).filter(Flat.id == 35).one()
+
+#print f1
+#print f2
+
+#print f1.similarity_bayes(f2)
+#print f1.similarity(f2)
+#print f1.similarity(f1)
 
 
 #fs = scrape_homegate()
