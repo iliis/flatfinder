@@ -42,8 +42,8 @@ def scrape_everything():
 
 
 
-scrape_everything()
-#calculate_similarity_for_all(0.3)
+#scrape_everything()
+calculate_similarity_for_all(2)
 
 
 #fs = scrape_homegate()

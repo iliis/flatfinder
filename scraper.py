@@ -187,7 +187,8 @@ class FlatScraper:
 
             all_flats.extend(fs)
 
-            if soup:
+            if soup and False:
+            #if soup:
                 url = self.get_next_page_link(soup)
                 if url:
                     continue
